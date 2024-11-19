@@ -54,7 +54,8 @@ The 1inch platform operates on multiple blockchains, including Ethereum, Binance
    - **Scalability**:
      - Assess how well the platform handles increasing trading volume, especially on **Layer 2 solutions**.
     
-       This project is aimed at ensuring that **1inch remains secure, efficient, and well-documented**, which is crucial for both users and developers looking to leverage the platform's features in their DeFi projects.
+     ---
+      This project is aimed at ensuring **1inch remains secure, efficient, and well-documented**, which is crucial for both users and developers looking          to leverage the platform's features in their DeFi projects.
      
 
----
+
