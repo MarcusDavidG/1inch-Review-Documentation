@@ -73,7 +73,7 @@ The 1inch platform operates on multiple blockchains, including Ethereum, Binance
 
 # **Project Architecture**
 
-## **AggregationRouter**
+## **AggregationRouter ( 1inch-v2-contracts )**
 
 The **AggregationRouter** is the central component of the 1inch protocol, facilitating efficient token swaps by leveraging advanced trade routing, gas optimizations, and modular contract interactions. It ensures users get the best rates for token swaps by aggregating liquidity across multiple decentralized exchanges (DEXs).
 
