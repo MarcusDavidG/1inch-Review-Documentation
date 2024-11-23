@@ -614,5 +614,96 @@ Based on the analysis, here are suggestions for improving the protocol's securit
 ---
 
 
-        
+
+
+---
+
+# **Security Analysis**
+
+### **Limit-Order-Protocol**
+
+#### **1. Reentrancy Guards**
+
+- **Function**: `fillOrderPostInteraction` in `WethUnwrapper`  
+- **Modifier**: No reentrancy guards (`nonReentrant`) are implemented in this function.  
+- **Risk Level**: **High**  
+- **Details**: This function interacts with external contracts (e.g., the WETH contract) and transfers ETH to the maker. Without a reentrancy guard, it is vulnerable to reentrancy attacks.  
+
+```solidity
+function fillOrderPostInteraction(
+    bytes32 /* orderHash */,
+    address maker,
+    address /* taker */,
+    uint256 /* makingAmount */,
+    uint256 takingAmount,
+    uint256 /* remainingMakerAmount */,
+    bytes calldata interactiveData
+) external override {
+    _WETH.withdraw(takingAmount); // External call
+    address receiver = maker;    // State change
+    ...
+}
+```
+
+**Recommendation**:  
+Add the `nonReentrant` modifier to critical functions like `fillOrderPostInteraction` to mitigate reentrancy risks.
+
+Example Implementation:  
+
+```solidity
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+contract WethUnwrapper is OnlyWethReceiver, IPostInteractionNotificationReceiver, ReentrancyGuard {
+    ...
+    function fillOrderPostInteraction(...) external override nonReentrant {
+        ...
+    }
+}
+```
+
+---
+
+#### **2. External Calls**
+
+- **Function**: `fillOrderPostInteraction` in `WethUnwrapper`  
+- **Issue**: The function makes an external call to `_WETH.withdraw(takingAmount)` before transferring ETH to the maker.  
+- **Recommendation**: Implement the **Checks-Effects-Interactions** pattern or other safety measures to ensure state changes occur before external calls. This can reduce vulnerabilities from reentrancy attacks.  
+
+Example Pattern:  
+
+```solidity
+// Example of Checks-Effects-Interactions pattern
+uint256 balanceBefore = address(this).balance;  // Check
+_WETH.withdraw(takingAmount);                  // External call
+require(address(this).balance >= balanceBefore + takingAmount, "Insufficient balance"); // Effect
+```
+
+---
+
+#### **3. State Changes and Event Emissions**
+
+- **Function**: `fillOrder` in `LimitOrderProtocol`  
+- **Observation**: The function emits the `OrderFilled` event **after** all state changes and external calls are completed.  
+- **Best Practice**: This follows the recommended practice of emitting events only after successful state updates and external calls.  
+
+```solidity
+emit OrderFilled(orderHash, makingAmount); // Event emission after state changes
+```
+
+---
+
+### **Recommendations**
+
+1. **Implement Reentrancy Guards**  
+   - Use the `nonReentrant` modifier in functions like `fillOrderPostInteraction`.  
+
+2. **Enhance External Call Safety**  
+   - Review all functions that make external calls. Apply the **Checks-Effects-Interactions** pattern to ensure state changes are committed before external calls.  
+
+3. **Consistent Event Emission**  
+   - Maintain the practice of emitting events consistently **after** state changes and external calls. This ensures reliable event logs for tracking contract behavior.  
+
+---
+
+
      
