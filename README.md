@@ -186,9 +186,8 @@ The router uses flags to modify swap behavior:
 
 ---
 
-## Limit Order Protocol
-
-A sophisticated decentralized protocol for executing limit orders on EVM-compatible blockchains. This protocol enables advanced trading functionality with customizable order parameters and interactions.
+## Limit Order Protocol 
+is a core component of the 1inch ecosystem, designed to facilitate advanced order management, including placing, filling, and canceling limit orders. This section provides an in-depth analysis of key smart contracts involved in the protocol.
 
 ## Core Components
 
@@ -441,8 +440,178 @@ interface IGasDiscountExtension {
    - Implement extensive unit tests
    - Add integration tests with major DEXes
    - Implement fuzzing tests for complex scenarios
+  
 
 
+
+
+---
+
+## **Limit Order Protocol**
+
+The **Limit Order Protocol** is a core component of the 1inch ecosystem, designed to facilitate advanced order management, including placing, filling, and canceling limit orders. 
+
+---
+
+### **1. Limit Order Protocol (LimitOrderProtocol.sol)**
+#### **Constructor**
+```solidity
+constructor(address weth) {
+    // Initialize the contract with the WETH address
+}
+```
+
+- **Purpose**: Initializes the contract with the WETH address to enable seamless interaction with Wrapped Ether.
+- **Significance**: Essential for facilitating transactions involving ETH.
+
+#### **Critical Functions**
+- Handles order lifecycle management:
+  - Placing orders.
+  - Filling orders.
+  - Canceling orders.
+- (Details on specific functions were not provided but are expected in this contract.)
+
+---
+
+### **2. WETH Unwrapper (WethUnwrapper.sol)**
+
+#### **Constructor**
+```solidity
+constructor(IWETH weth) {
+    _WETH = weth;
+}
+```
+
+- **Purpose**: Sets the reference to the WETH contract.
+- **Significance**: Enables the contract to withdraw WETH and transfer ETH to users.
+
+#### **Critical Function**
+**`fillOrderPostInteraction`**
+```solidity
+function fillOrderPostInteraction(
+    bytes32 /* orderHash */,
+    address maker,
+    address /* taker */,
+    uint256 /* makingAmount */,
+    uint256 takingAmount,
+    uint256 /* remainingMakerAmount */,
+    bytes calldata interactiveData
+) external override {
+    _WETH.withdraw(takingAmount);
+    address receiver = maker;
+    if (interactiveData.length == 20) {
+        receiver = address(bytes20(interactiveData));
+    }
+    (bool success, ) = receiver.call{value: takingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
+    if (!success) revert Errors.ETHTransferFailed();
+}
+```
+
+- **Purpose**: Handles the post-order-filling process by withdrawing WETH and transferring ETH to the recipient.
+- **Key Features**:
+  - Withdraws WETH after order execution.
+  - Transfers ETH to the maker or an alternate address based on `interactiveData`.
+  - Includes robust error handling to ensure successful ETH transfers.
+
+---
+
+### **3. Order Registrator (OrderRegistrator.sol)**
+
+#### **Constructor**
+```solidity
+constructor(IOrderMixin limitOrderProtocol) {
+    // Initialize with the Limit Order Protocol address
+}
+```
+
+- **Purpose**: Takes an instance of the Limit Order Protocol to facilitate order registration within the system.
+
+#### **Critical Function**
+**`registerOrder`**
+```solidity
+function registerOrder(Order memory order, bytes memory extension, bytes memory signature) external {
+    // Logic for registering the order
+    emit OrderRegistered(order, extension, signature);
+}
+```
+
+- **Purpose**: Registers new orders in the protocol.
+- **Significance**:
+  - Emits an `OrderRegistered` event for transparency and tracking.
+  - Maintains order integrity within the system.
+
+---
+
+### **4. Series Nonce Manager (SeriesNonceManager.sol)**
+
+#### **Critical Function**
+**`advanceNonce`**
+```solidity
+function advanceNonce(uint256 series, uint256 amount) public {
+    if (amount == 0 || amount > 255) revert AdvanceNonceFailed();
+    unchecked {
+        uint256 newNonce = nonce[series][msg.sender] + amount;
+        nonce[series][msg.sender] = newNonce;
+        emit NonceIncreased(msg.sender, series, newNonce);
+    }
+}
+```
+
+- **Purpose**: Advances the nonce for a specific series by a defined amount.
+- **Significance**:
+  - Ensures order uniqueness to prevent replay attacks.
+  - Critical for secure order lifecycle management.
+
+---
+
+### **5. Create3 Deployer (Create3Deployer.sol)**
+
+#### **Constructor**
+```solidity
+constructor() {
+    // Sets the deployer as the owner
+}
+```
+
+- **Purpose**: Assigns ownership to the deployer during initialization.
+
+#### **Critical Function**
+**`deploy`**
+```solidity
+function deploy(bytes32 salt, bytes calldata code) external onlyOwner returns (address) {
+    return Create3.create3(salt, code);
+}
+```
+
+- **Purpose**: Deploys new contracts using the `CREATE3` method.
+- **Significance**:
+  - Enables predictable contract addresses based on a `salt`.
+  - Facilitates dynamic and secure contract creation.
+
+---
+
+### **Recommendations**
+
+Based on the analysis, here are suggestions for improving the protocol's security and functionality:
+
+1. **Limit Order Protocol**:
+   - Add explicit slippage protection mechanisms.
+   - Implement additional validation for order parameters to avoid errors.
+
+2. **WETH Unwrapper**:
+   - Ensure robust error handling for ETH transfers.
+   - Consider adding an emergency pause mechanism for unforeseen scenarios.
+
+3. **Order Registrator**:
+   - Strengthen access control to prevent unauthorized order registrations.
+
+4. **Series Nonce Manager**:
+   - Introduce additional checks for nonce advancement to validate inputs.
+
+5. **Create3 Deployer**:
+   - Add functionality to revoke ownership when required for security.
+
+---
 
 
         
